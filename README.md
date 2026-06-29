@@ -3,7 +3,7 @@
 - Consists of two repos in this project to have a better view for DevOps flow
 - Below is the architecture diagram that will be used as a standard baseline __MVP:__
 
-![DevOps_flow](./assets/DevOps.png)
+![DevOps_flow](./assets/pic/DevOps.png)
 
 
 
