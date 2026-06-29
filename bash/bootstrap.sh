@@ -1,13 +1,13 @@
 #!/bin/bash
 echo "Starting Enterprise K8s Bootstrap..."
 
-# Checking Homebrew, 2>&!, means no matter how, keep the screen clears
+# Checking Homebrew
 if ! command -v brew > /dev/null 2>&1; then  
     echo "Homebrew is not installed. Please install..."
     exit 1
 fi
 
-# Checking Orbstack
+# Checking Orbstack / Docker Engine
 if ! docker info > /dev/null 2>&1; then
     echo "Docker engine is not running. Please start Orbstack or Docker Desktop."
     exit 1 
@@ -21,7 +21,7 @@ if ! command -v kind > /dev/null 2>&1; then
     brew install kind
 else
     kind_version=$(kind --version)
-    echo "Kind had been installed ($kind_version)"
+    echo "Kind has been installed ($kind_version)"
 fi
 
 # Check K8s CLI
@@ -29,18 +29,30 @@ if ! command -v kubectl > /dev/null 2>&1; then
     echo "kubectl not found. Automatically installing via Homebrew..."
     brew install kubernetes-cli
 else
-    K8s_version=$(kubernetes-cli --version)
-    echo "Kubectl had been installed ($K8s_version)"
+    # Fixed: Querying binary instead of package name formula
+    K8s_version=$(kubectl version --client --short 2>/dev/null || kubectl version --client | head -n 1)
+    echo "Kubectl has been installed ($K8s_version)"
 fi
 
-# Check for the Multi-Node Cluster...^ means right here to start at the very beginning of the line and $ means must match end right here at the end of the line...
+# Verify Host Ports 80 and 443 are clear to prevent container provisioning deadlock
+echo "Verifying network port availability on host machine..."
+for port in 80 443; do
+    if lsof -i -P -n | grep -i "LISTEN" | grep -q "[:\.]${port} "; then
+        echo "Port $port is already being bound as a local server on your host machine!"
+        echo "Please stop any local web servers or conflicting Docker containers first."
+        exit 1
+    fi
+done
+echo "Host network ports 80/443 are clear. Node mapping safe."
+
+# Cluster Configuration Definitions
 CLUSTER_NAME="factory-sandbox"
 CONFIG_FILE="../config/kind-config.yaml"
 
 echo "Bootstrapping $CLUSTER_NAME..."
 
-
-if kind get cluster 2>/dev/null | grep -q "^${CLUSTER_NAME}$"; then
+# Fixed: Changed 'get cluster' to 'get clusters'
+if kind get clusters 2>/dev/null | grep -q "^${CLUSTER_NAME}$"; then
     echo "Kind cluster '$CLUSTER_NAME' is already running. System stable."
 else 
     echo "Provisioning isolated 2-Node Cluster Topology via Kind..."
